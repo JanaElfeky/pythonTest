@@ -1,0 +1,33 @@
+name: Lint and Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  lint:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chartboost/ruff-action@v1
+        with:
+          args: check .
+
+  build:
+    name: Docker Compose Build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and Start containers
+        run: docker compose up --build -d
+      - name: List running containers
+        run: docker ps -a
+      - name: Stop containers
+        run: docker compose down
+
+
