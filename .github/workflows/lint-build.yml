@@ -35,9 +35,9 @@ jobs:
 
       - name: Set lowercase owner and repo
         id: prep
+        shell: bash
         run: |
           echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
-          # Only use the part after the slash for the repo name
           echo "REPO_LC=$(echo $REPO | awk -F/ '{print $2}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
         env:
           OWNER: ${{ github.repository_owner }}
