@@ -34,10 +34,11 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Set lowercase owner and repo
-        id: vars
+        id: prep
         run: |
           echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
-          echo "REPO_LC=${REPO,,}" >> $GITHUB_ENV
+          # Only use the part after the slash for the repo name
+          echo "REPO_LC=$(echo $REPO | awk -F/ '{print $2}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
         env:
           OWNER: ${{ github.repository_owner }}
           REPO: ${{ github.repository }}
