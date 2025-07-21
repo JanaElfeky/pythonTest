@@ -2,31 +2,40 @@ name: Kubernetes CI/CD Pipeline
 
 on:
   push:
-    branches: [main] 
+    branches: [main]
+  pull_request:
 
 jobs:
-  build-and-deploy:
+  lint:
+    name: Ruff Lint
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check .
+
+  build-and-deploy:
+    name: Build and Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: lint
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Minikube (with k8s cluster)
       - name: Set up Minikube
         uses: medyagh/setup-minikube@latest
 
-      # Build Docker image inside Minikube
       - name: Build Docker image in Minikube
         run: minikube image build -t pipeline-demo:latest .
 
-      # Deploy Redis to Minikube
-      - name: Deploy Redis
+      - name: Deploy Redis to Minikube
         run: |
           kubectl apply -f redis-deplyment.yaml
           kubectl apply -f redis-service.yaml
-      # Deploy Flask app & service to Minikube
-      - name: Deploy Flask app
+
+      - name: Deploy Flask app & service to Minikube
         run: |
           kubectl apply -f deployment-def.yaml
           kubectl apply -f service-def.yaml
