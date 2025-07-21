@@ -23,7 +23,7 @@ jobs:
       # Deploy Redis to Minikube
       - name: Deploy Redis
         run: |
-          kubectl apply -f redis-deployment.yaml
+          kubectl apply -f redis-deplyment.yaml
           kubectl apply -f redis-service.yaml
       # Deploy Flask app & service to Minikube
       - name: Deploy Flask app
