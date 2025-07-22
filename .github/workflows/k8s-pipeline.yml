@@ -41,5 +41,5 @@ jobs:
           kubectl apply -f service-def.yaml
       # After deploying your app/services
       - name: Apply Ingress Resource
-        run: kubectl apply -f k8s/ingress.yaml
+        run: kubectl apply -f ingress.yaml
 
