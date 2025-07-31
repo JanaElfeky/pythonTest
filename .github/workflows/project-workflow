@@ -1,0 +1,105 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  lint:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: check .
+
+  build:
+    name: Docker Compose Build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Log in to github container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set lowercase owner and repo
+        id: prep
+        shell: bash
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+          echo "REPO_LC=$(echo $REPO | awk -F/ '{print $2}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.repository }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.REPO_LC }}:latest
+            ghcr.io/${{ env.OWNER_LC }}/${{ env.REPO_LC }}:${{ github.sha }}
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app
+      - name: Run Unit Tests
+        run: mvn test
+
+  scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Filesystem scan
+      - name: Trivy FS scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: 1
+          output: 'trivy-fs-report.html'
+
+      # Build and scan docker image
+      - name: Build Docker image
+        run: docker build -t myapp:latest .
+      - name: Trivy Image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'myapp:latest'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: 1
+          output: 'trivy-image-report.html'
+      - name: Upload Trivy Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: |
+            trivy-fs-report.html
+            trivy-image-report.html    
